@@ -1,0 +1,309 @@
+CDS Attend — NYSC CDS Attendance Management System
+Comprehensive Frontend Architecture & Project Specification Document
+Executive Summary & System Overview
+CDS Attend is a modern, web-based management platform built to modernize weekly Community Development Service (CDS) attendance workflows for the National Youth Service Corps (NYSC). The system transitions local government administration away from manual paper registers to a secure, traceable digital ecosystem.
+
+The application serves three primary user tiers:
+
+Local Government Inspectors (LGI): Executive oversight, cross-group auditing, global attendance reports, and administrator moderation.
+CDS Group Executives: Session creation, QR code generation, manual check-in overrides, excuse letter reviews, and group member management.
+Corps Members: Self-registration, dynamic QR code check-ins, excuse submissions, and individual attendance history tracking.
+
+
+Technical Stack & Architecture
+The application is structured as a decoupled frontend client built with React and Next.js, interfacing with a Python FastAPI backend and PostgreSQL database via a typed RESTful API client.
+
+Category
+Library / Framework
+Technical Purpose
+Framework
+Next.js 14+ (App Router)
+Server-side rendering, layout routing, and static optimization
+Language
+TypeScript 5.0+
+Strict type safety, interface contracts, and static analysis
+Styling
+Tailwind CSS
+Utility-first responsive design system and dynamic themes
+Icons
+Lucide React
+Contextual icon set for administrative UI elements
+Data Visualization
+Recharts
+Responsive charts for attendance statistics and trends
+Form Handling
+React Hook Form + Zod
+Schema-validated client forms and error management
+Data Fetching
+TanStack Query v5
+API state cache, polling, background revalidation, and mutations
+QR Code Engine
+html5-qrcode / qrcode.react
+Real-time QR generation and camera-based barcode scanning
+
+
+
+Directory & File Structure
+src/
+
+├── app/
+
+│   ├── (public)/
+
+│   │   ├── login/page.tsx
+
+│   │   ├── register/page.tsx
+
+│   │   └── pending-approval/page.tsx
+
+│   ├── (dashboard)/
+
+│   │   ├── layout.tsx
+
+│   │   ├── dashboard/page.tsx
+
+│   │   ├── attendance/page.tsx
+
+│   │   ├── sessions/page.tsx
+
+│   │   ├── excuses/page.tsx
+
+│   │   ├── members/page.tsx
+
+│   │   ├── groups/page.tsx
+
+│   │   ├── reports/page.tsx
+
+│   │   ├── audit-logs/page.tsx
+
+│   │   ├── moderators/page.tsx
+
+│   │   └── settings/page.tsx
+
+│   └── layout.tsx
+
+├── components/
+
+│   ├── ui/
+
+│   │   ├── button.tsx
+
+│   │   ├── card.tsx
+
+│   │   ├── dialog.tsx
+
+│   │   ├── table.tsx
+
+│   │   └── badge.tsx
+
+│   ├── layout/
+
+│   │   ├── sidebar.tsx
+
+│   │   ├── navbar.tsx
+
+│   │   └── mobile-nav.tsx
+
+│   ├── dashboard/
+
+│   ├── attendance/
+
+│   │   ├── qr-scanner.tsx
+
+│   │   └── checkin-modal.tsx
+
+│   ├── sessions/
+
+│   ├── members/
+
+│   ├── excuses/
+
+│   └── reports/
+
+├── features/
+
+│   ├── auth/
+
+│   ├── attendance/
+
+│   ├── sessions/
+
+│   ├── members/
+
+│   ├── groups/
+
+│   ├── excuses/
+
+│   └── audit/
+
+├── lib/
+
+│   ├── api-client.ts
+
+│   ├── api-errors.ts
+
+│   ├── permissions.ts
+
+│   ├── validators.ts
+
+│   └── formatters.ts
+
+├── hooks/
+
+│   ├── use-auth.ts
+
+│   ├── use-attendance.ts
+
+│   └── use-permissions.ts
+
+└── types/
+
+    ├── user.ts
+
+    ├── session.ts
+
+    └── attendance.ts
+
+
+Design System & Visual Palette
+The visual identity uses a trust-building green-teal palette paired with authoritative slate tones.
+Color Palette Specification
+Token Name
+Hex Code
+Utility / Usage Target
+Primary Teal
+#0F766E
+Brand header, active states, main action buttons
+Deep Teal
+#115E59
+Hover states, secondary accents, dense text headers
+Turquoise Accent
+#2DD4BF
+Success indicators, QR code highlights, badges
+Supporting Blue
+#2563EB
+Informational callouts, link elements, metadata tags
+Light Surface
+#F0FDFA
+Card backgrounds, table header rows, subtle banners
+Page Canvas
+#F8FAFC
+Global page background color
+Primary Text
+#172033
+Body text, high-contrast headings
+Secondary Text
+#64748B
+Labels, captions, table metadata, muted text
+
+
+
+Role-Based Access Control (RBAC) Matrix
+Feature Module
+Corps Member
+CDS Executive
+LGI Admin
+Scan Attendance QR
+ Full Access
+ Full Access
+ Full Access
+Create CDS Session
+ Restricted
+ Full Access
+ Full Access
+Manual Attendance Override
+ No Access
+ Assigned Group
+ Global Access
+Submit Excuse Letter
+ Full Access
+ Full Access
+ Full Access
+Review & Approve Excuses
+ No Access
+ Assigned Group
+ Global Access
+Approve New Members
+ No Access
+ Assigned Group
+ Global Access
+View Global Audit Logs
+ No Access
+ No Access
+ Full Access
+Manage System Moderators
+ No Access
+ No Access
+ Full Access
+
+
+
+Core Feature Module Specifications
+1. Authentication & Registration Workflow
+State Management: JWT token stored securely in httpOnly cookies with client-side context mirror.
+Validation Rules:
+NYSC State Code format validation (NY/24A/1234 format via regex).
+CDS Group selection drop-down linked dynamically to active groups.
+Pending Verification Screen: Newly registered members land on an unapproved state blocking dashboard access until a CDS Executive or LGI verifies their profile.
+2. Session Management & Dynamic QR Verification
+Session Lifecycle: Scheduled -> Active -> Closed -> Archived.
+Dynamic QR Codes: Executives launch an active session. The QR generator yields a token that refreshes every 15–30 seconds to prevent dynamic screenshot sharing.
+Check-In Validation Engine: Frontend parses payload containing timestamps and geo-fencing coordinates before dispatching the verification payload to /api/v1/attendance/checkin.
+3. Attendance Excuses System
+Submission Flow: Form supporting reason classification (Medical, Official Duty, Emergency), date picker, and document proof uploading.
+Review Interface: Executive split-view panel featuring document preview, approval action buttons, and reason logs.
+4. Analytics & Reporting Hub
+Metrics Tracked: Attendance rate per CDS group, weekly attendance trends, persistent absent list, excuse approval metrics.
+Export Capabilities: One-click CSV and PDF summary report exports powered by structured table outputs.
+
+
+API Client & Error Handling Architecture
+The client uses an Axios-wrapped HTTP module (api-client.ts) integrated with TanStack Query for cache invalidation.// Sample API Error Interface Implementation
+
+export interface APIErrorResponse {
+
+  statusCode: number;
+
+  message: string;
+
+  errorCode: 'UNAUTHORIZED' | 'SESSION_EXPIRED' | 'DUPLICATE_CHECKIN' | 'OUT_OF_BOUNDS';
+
+  details?: Record<string, string[]>;
+
+}
+
+// Global Query Handler Configuration
+
+export const queryConfig = {
+
+  defaultOptions: {
+
+    queries: {
+
+      staleTime: 1000 * 60 * 5, // 5 minutes
+
+      refetchOnWindowFocus: false,
+
+      retry: (failureCount: number, error: any) => {
+
+        if (error?.statusCode === 401 || error?.statusCode === 403) return false;
+
+        return failureCount < 2;
+
+      },
+
+    },
+
+  },
+
+};
+
+
+Deployment & Production Readiness Checklist
+Environment Variables Configured: NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_QR_REFRESH_INTERVAL.
+Accessibility Standard: WCAG 2.1 AA compliance across mobile check-in flows.
+Performance Target: Lighthouse score >= 90 across Performance, Accessibility, and Best Practices.
+
+FOR BACKEND SYSTEM
+
+The admin approves the users accounts

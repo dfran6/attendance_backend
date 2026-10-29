@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from src.core.config import Config
+from src.db.mains import asyncpg_connect_args
 from src.models import metadata
 
 
@@ -80,6 +81,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=asyncpg_connect_args(Config.DATABASE_URL),
     )
 
     async with connectable.connect() as connection:

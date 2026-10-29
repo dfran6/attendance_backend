@@ -1,26 +1,26 @@
+"""All table models, imported here so Alembic's env.py only needs `from src.models import metadata`."""
 from sqlmodel import SQLModel
 
-from src.models.main_model import (
-    Group,
-    Memberships,
-    Moderator_assignment,
-    Registration_links,
-    Attendance,
-    Attendance_Session,
-    Checkin_attempts,
-    Excuse,
-    Attendance_corrections,
-    Audit_events,
-    Reports,
-    User,
-)
-
+from src.models.attendance import AttendanceCorrection, AttendanceRecord, CdsSession, Excuse, QrChallenge
+from src.models.audit import AuditLog, Notification
+from src.models.identity import AuthSession, RoleAssignment, User
+from src.models.organization import AdminArea, CdsGroup, Membership
 
 metadata = SQLModel.metadata
 
-
-
-#i used this file to reduce 
-# the number of model importation on the env.py file
-#so no need to import a model to the env.py itll be gotten from here
-#to prvent this: from src.db.models import User
+__all__ = [
+    "AdminArea",
+    "AttendanceCorrection",
+    "AttendanceRecord",
+    "AuditLog",
+    "AuthSession",
+    "CdsGroup",
+    "CdsSession",
+    "Excuse",
+    "Membership",
+    "Notification",
+    "QrChallenge",
+    "RoleAssignment",
+    "User",
+    "metadata",
+]
