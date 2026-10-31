@@ -168,6 +168,9 @@ async def list_sessions(principal: Principal, group_id: Optional[uuid.UUID], sta
 
 
 async def get_session(session_id: uuid.UUID, principal: Principal, db: AsyncSession) -> SessionOut:
+    # Start it if its scheduled time has arrived — the detail page polls this endpoint
+    # expecting the flip, so it must activate just like the list view does.
+    await activate_due_sessions(session_id=session_id)
     cds, group = await load_session(session_id, principal, db)
     mine = await _my_statuses(principal.id, [cds.id], db)
     return to_out(cds, group, principal, mine.get(cds.id))
