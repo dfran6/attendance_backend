@@ -19,8 +19,8 @@ def normalize_state_code(value: str) -> str:
 
 
 def check_password_strength(value: str) -> str:
-    if len(value) < 10:
-        raise ValueError("Password must be at least 10 characters.")
+    if len(value) < 8:
+        raise ValueError("Password must be at least 8 characters.")
     if len(value) > 128:
         raise ValueError("Password must be at most 128 characters.")
     if not (re.search(r"[A-Za-z]", value) and re.search(r"\d", value)):
