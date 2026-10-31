@@ -201,7 +201,9 @@ def _require_status(cds: CdsSession, *allowed: SessionStatus) -> None:
 async def update_session(session_id: uuid.UUID, data: SessionUpdate, principal: Principal, request: Request,
                          db: AsyncSession) -> SessionOut:
     cds, group = await load_session(session_id, principal, db, manage=True, lock=True)
-    _require_status(cds, SessionStatus.scheduled)
+    # Editable while scheduled or live. Lateness keys off actual_start (set at start), not
+    # scheduled_start, so changing the times of a live session never reclassifies check-ins.
+    _require_status(cds, SessionStatus.scheduled, SessionStatus.active)
     _reject_past(data.scheduled_end)
     for field, value in data.model_dump().items():
         setattr(cds, field, value)

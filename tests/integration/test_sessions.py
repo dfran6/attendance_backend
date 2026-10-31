@@ -88,14 +88,20 @@ async def test_validation(client, factory):
     assert res.status_code == 422  # timezone required
 
 
-async def test_edits_only_while_scheduled(client, factory):
+async def test_edits_allowed_while_scheduled_or_live(client, factory):
     _, group, _, executive = await _exec_setup(factory)
     await client.login(executive.email)
     sid = (await client.post("/api/v1/sessions", json=body(group.id))).json()["id"]
     patch = {k: v for k, v in body(group.id, title="Renamed").items() if k != "groupId"}
+    # Scheduled: editable.
     assert (await client.patch(f"/api/v1/sessions/{sid}", json=patch)).json()["title"] == "Renamed"
+    # Live: still editable (e.g. extend the end time).
     await client.post(f"/api/v1/sessions/{sid}/start")
-    assert (await client.patch(f"/api/v1/sessions/{sid}", json=patch)).status_code == 409
+    live = {k: v for k, v in body(group.id, title="Renamed live").items() if k != "groupId"}
+    assert (await client.patch(f"/api/v1/sessions/{sid}", json=live)).json()["title"] == "Renamed live"
+    # Closed: no longer editable.
+    await client.post(f"/api/v1/sessions/{sid}/close")
+    assert (await client.patch(f"/api/v1/sessions/{sid}", json=live)).status_code == 409
 
 
 async def test_executive_cannot_manage_another_group(client, factory):

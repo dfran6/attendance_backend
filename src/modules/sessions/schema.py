@@ -41,7 +41,7 @@ class SessionCreate(_SessionFields):
 
 
 class SessionUpdate(_SessionFields):
-    """Full replacement of the editable fields; allowed only while scheduled."""
+    """Full replacement of the editable fields; allowed while scheduled or live."""
 
 
 class SessionOut(ApiModel):
