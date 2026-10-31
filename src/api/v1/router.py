@@ -4,6 +4,7 @@ from src.modules.attendance.routes import attendance_router, session_attendance_
 from src.modules.auth.routes import auth_router
 from src.modules.groups.routes import area_router, group_router
 from src.modules.memberships.routes import membership_router
+from src.modules.notifications.routes import notification_router
 from src.modules.sessions.routes import session_router
 from src.modules.users.routes import user_router
 
@@ -17,5 +18,6 @@ api_router.include_router(membership_router, tags=["Memberships"])
 api_router.include_router(session_router, prefix="/sessions", tags=["Sessions"])
 api_router.include_router(session_attendance_router, prefix="/sessions", tags=["Attendance"])
 api_router.include_router(attendance_router, prefix="/attendance", tags=["Attendance"])
+api_router.include_router(notification_router, prefix="/notifications", tags=["Notifications"])
 
 # Planned (phases 5–7): excuses, reports, audit, moderators.

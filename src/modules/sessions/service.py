@@ -26,6 +26,7 @@ from src.models import AttendanceRecord, CdsGroup, CdsSession, QrChallenge
 from src.models.base import as_utc, utc_now
 from src.models.enums import SessionStatus
 from src.modules.audit import service as audit
+from src.modules.notifications import service as notifications
 from src.modules.qr_codes.service import challenge_ttl, sign_challenge
 from src.modules.sessions.schema import ChallengeOut, SessionCreate, SessionOut, SessionUpdate
 from src.shared.schemas import Page, PageParams
@@ -47,7 +48,7 @@ async def activate_due_sessions(*, session_id: Optional[uuid.UUID] = None,
     now = utc_now()
     async with AsyncSessionLocal() as s:
         stmt = (
-            select(CdsSession.id, CdsSession.group_id, CdsSession.scheduled_start, CdsGroup.area_id)
+            select(CdsSession.id, CdsSession.group_id, CdsSession.scheduled_start, CdsGroup.area_id, CdsSession.title)
             .join(CdsGroup, CdsGroup.id == CdsSession.group_id)
             .where(CdsSession.status == SessionStatus.scheduled, CdsSession.scheduled_start <= now,
                    CdsSession.scheduled_end > now)
@@ -61,8 +62,8 @@ async def activate_due_sessions(*, session_id: Optional[uuid.UUID] = None,
         if not due:
             return
         busy = set((await s.exec(select(CdsSession.group_id).where(
-            CdsSession.status == SessionStatus.active, CdsSession.group_id.in_({g for _, g, _, _ in due})))).all())
-        for sid, gid, start, area_id in due:
+            CdsSession.status == SessionStatus.active, CdsSession.group_id.in_({g for _, g, _, _, _ in due})))).all())
+        for sid, gid, start, area_id, title in due:
             if gid in busy:
                 continue
             result = await s.execute(
@@ -74,6 +75,7 @@ async def activate_due_sessions(*, session_id: Optional[uuid.UUID] = None,
                 busy.add(gid)
                 audit.record(s, "session.auto_started", target_type="session", target_id=sid, group_id=gid,
                              area_id=area_id)
+                await notifications.fan_out_session_started(s, session_id=sid, group_id=gid, title=title)
         try:
             await s.commit()
         except IntegrityError:
@@ -250,6 +252,8 @@ async def transition(session_id: uuid.UUID, action: str, principal: Principal, r
                        ErrorCode.INVALID_TRANSITION)
     audit.record(db, f"session.{action}", actor_id=principal.id, target_type="session", target_id=cds.id,
                  group_id=group.id, area_id=group.area_id, request=request)
+    if action == "start":
+        await notifications.fan_out_session_started(db, session_id=cds.id, group_id=group.id, title=cds.title)
     await db.commit()
     await db.refresh(cds)
     return to_out(cds, group, principal)
