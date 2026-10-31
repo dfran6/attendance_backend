@@ -27,6 +27,7 @@ from src.modules.auth.schema import LoginRequest, RegisterRequest, normalize_ema
 # treated as a theft attempt. Within this window a rotated token is refused but the
 # family is left intact, and the client retries with the newer cookie.
 REFRESH_REUSE_GRACE = timedelta(seconds=15)
+UTC_PLUS_ONE = timezone(timedelta(hours=1))
 
 
 class IssuedTokens:
@@ -188,7 +189,7 @@ class AuthService:
             user_id=user.id,
             family_id=family_id or uuid.uuid4(),
             token_hash=hash_token(raw),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=Config.REFRESH_TOKEN_EXPIRE_DAYS),
+            expires_at=datetime.now(UTC_PLUS_ONE) + timedelta(days=Config.REFRESH_TOKEN_EXPIRE_DAYS),
             user_agent=(request.headers.get("user-agent") or "")[:255] or None,
             ip_address=request.client.host if request.client else None,
         )

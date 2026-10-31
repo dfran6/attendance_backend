@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import jwt
 from src.core.config import Config
@@ -10,6 +10,7 @@ from itsdangerous import URLSafeTimedSerializer
 import random
 import string
 
+UTC_PLUS_ONE = timezone(timedelta(hours=1))
 
 password_context = CryptContext(
     schemes=['pbkdf2_sha256'],
@@ -30,10 +31,10 @@ def verify_password(password:str, hash:str) -> bool:
     return password_context.verify(password,hash)
 
 def create_access_token(user_data:dict, expiry:timedelta = None, refresh:bool=False):
-    payload ={}
+    payload ={
     
     payload['user'] = user_data
-    payload['exp'] = datetime.now() + ( expiry if expiry is not None else timedelta(seconds=ACCESS_TOKEN_EXPIRY))
+    payload['exp'] = datetime.now(UTC_PLUS_ONE) + ( expiry if expiry is not None else timedelta(seconds=ACCESS_TOKEN_EXPIRY))
     payload['jti'] = str(uuid.uuid4())
     
     payload['refresh'] = refresh

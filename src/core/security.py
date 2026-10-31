@@ -12,6 +12,8 @@ from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatc
 
 from src.core.config import Config
 
+UTC_PLUS_ONE = timezone(timedelta(hours=1))
+
 # argon2-cffi defaults are Argon2id with RFC 9106 "low memory" parameters.
 _hasher = PasswordHasher()
 
@@ -37,7 +39,7 @@ def password_needs_rehash(password_hash: str) -> bool:
 
 
 def create_access_token(user_id: uuid.UUID, session_id: uuid.UUID) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC_PLUS_ONE)
     payload = {
         "sub": str(user_id),
         "sid": str(session_id),

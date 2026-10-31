@@ -4,13 +4,15 @@ Enums are stored as VARCHAR + CHECK constraint (native_enum=False) so new values
 be added with an ordinary migration instead of ALTER TYPE.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Optional, Type
 
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
+
+UTC_PLUS_ONE = timezone(timedelta(hours=1))
 
 # Deterministic constraint names, so future migrations can alter/drop them by name.
 SQLModel.metadata.naming_convention = {
@@ -23,7 +25,7 @@ SQLModel.metadata.naming_convention = {
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC_PLUS_ONE)
 
 
 def as_utc(value: Optional[datetime]) -> Optional[datetime]:
@@ -31,8 +33,8 @@ def as_utc(value: Optional[datetime]) -> Optional[datetime]:
     if value is None:
         return None
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC_PLUS_ONE)
+    return value.astimezone(UTC_PLUS_ONE)
 
 
 def enum_column(enum_type: Type[Enum], name: str, *, index: bool = False, nullable: bool = False, default=None) -> Column:
