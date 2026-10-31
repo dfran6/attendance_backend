@@ -14,6 +14,7 @@ from src.modules.attendance.schema import (
     CheckInResponse,
     CorrectionOut,
     CorrectionRequest,
+    LocationCheckInRequest,
     ManualAttendanceRequest,
     MyAttendanceItem,
     RosterResponse,
@@ -32,6 +33,14 @@ async def check_in(data: CheckInRequest, request: Request, principal: Principal 
                    db: AsyncSession = Depends(get_session)):
     await checkin_limiter.check(f"user:{principal.id}")
     return await service.check_in(data, principal, request, db)
+
+
+@attendance_router.post("/checkin/location", response_model=CheckInResponse, status_code=status.HTTP_201_CREATED)
+async def check_in_location(data: LocationCheckInRequest, request: Request,
+                            principal: Principal = Depends(require_approved),
+                            db: AsyncSession = Depends(get_session)):
+    await checkin_limiter.check(f"user:{principal.id}")
+    return await service.check_in_location(data, principal, request, db)
 
 
 @attendance_router.get("/me", response_model=Page[MyAttendanceItem])

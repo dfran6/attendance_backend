@@ -122,6 +122,44 @@ async def test_geofence(make_client, factory, db):
     assert not hasattr(AttendanceRecord, "latitude")
 
 
+async def test_location_check_in_within_venue(make_client, factory, db):
+    _, _, _, cds, _, mc = await _setup(factory, make_client, geofence=VENUE)
+    # No QR payload: GPS alone proves presence for the member's one active session.
+    res = await mc.post("/api/v1/attendance/checkin/location",
+                        json={"latitude": 6.6022, "longitude": 3.3517, "accuracyM": 15})
+    assert res.status_code == 201, res.text
+    assert res.json()["status"] == "present" and res.json()["method"] == "location"
+    assert 0 < res.json()["distanceM"] <= 100
+
+    again = await mc.post("/api/v1/attendance/checkin/location",
+                          json={"latitude": 6.6022, "longitude": 3.3517})
+    assert again.status_code == 409 and again.json()["errorCode"] == "DUPLICATE_CHECKIN"
+
+
+async def test_location_check_in_out_of_bounds(make_client, factory, db):
+    _, _, _, _, _, mc = await _setup(factory, make_client, geofence=VENUE)
+    far = await mc.post("/api/v1/attendance/checkin/location", json={"latitude": 6.62, "longitude": 3.35})
+    assert far.status_code == 403 and far.json()["errorCode"] == "OUT_OF_BOUNDS"
+    assert (await db.exec(select(AttendanceRecord))).all() == []
+    assert "attendance.checkin_rejected" in (await db.exec(select(AuditLog.action))).all()
+
+
+async def test_location_check_in_requires_geofence(make_client, factory):
+    # Active session but no geofence configured -> must fall back to the QR code.
+    _, _, _, _, _, mc = await _setup(factory, make_client)
+    res = await mc.post("/api/v1/attendance/checkin/location", json={"latitude": 6.6022, "longitude": 3.3517})
+    assert res.status_code == 422 and res.json()["errorCode"] == "LOCATION_REQUIRED"
+
+
+async def test_location_check_in_no_active_session(make_client, factory):
+    group = await factory.group(await factory.area())
+    member = await factory.member(group)
+    mc = await make_client()
+    await mc.login(member.email)
+    res = await mc.post("/api/v1/attendance/checkin/location", json={"latitude": 6.6022, "longitude": 3.3517})
+    assert res.status_code == 409 and res.json()["errorCode"] == "SESSION_NOT_ACTIVE"
+
+
 async def test_concurrent_check_ins_produce_one_record(make_client, factory, db):
     _, _, _, cds, ex, mc = await _setup(factory, make_client)
     payload = await _code(ex, cds)

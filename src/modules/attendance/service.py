@@ -25,6 +25,7 @@ from src.modules.attendance.schema import (
     CheckInRequest,
     CheckInResponse,
     CorrectionOut,
+    LocationCheckInRequest,
     MyAttendanceItem,
     RosterEntry,
     RosterResponse,
@@ -131,6 +132,60 @@ async def check_in(data: CheckInRequest, principal: Principal, request: Request,
         await db.commit()
     except IntegrityError:
         # A concurrent request for the same member won the race.
+        await db.rollback()
+        raise _duplicate(await _existing(user_id, cds_id, db))
+    return CheckInResponse(**_out(record).model_dump(), session_title=title, group_name=group_name)
+
+
+async def check_in_location(data: LocationCheckInRequest, principal: Principal, request: Request,
+                            db: AsyncSession) -> CheckInResponse:
+    """Self check-in proven by GPS alone (no QR). The session must have a geofence to verify
+    against; otherwise the member falls back to scanning the rotating QR code."""
+    group_id = principal.approved_group_id
+    if group_id is None:
+        raise forbidden("Join and get approved in a CDS group before checking in.")
+
+    await activate_due_sessions(group_ids={group_id})
+    cds = (
+        await db.exec(
+            select(CdsSession).where(CdsSession.group_id == group_id, CdsSession.status == SessionStatus.active)
+        )
+    ).first()
+    if cds is None:
+        raise AppError(409, ErrorCode.SESSION_NOT_ACTIVE, "No session is taking attendance right now.")
+    group = await db.get(CdsGroup, group_id)
+
+    if cds.radius_m is None:
+        raise AppError(422, ErrorCode.LOCATION_REQUIRED,
+                       "This session has no venue location set. Scan the QR code to check in.")
+
+    existing = await _existing(principal.id, cds.id, db)
+    if existing is not None:
+        raise _duplicate(existing)
+
+    distance = haversine_m(data.latitude, data.longitude, cds.latitude, cds.longitude)
+    allowance = cds.radius_m + min(data.accuracy_m or 0, MAX_ACCURACY_ALLOWANCE_M)
+    if distance > allowance:
+        raise await _reject(
+            db, principal, request, "out_of_bounds",
+            AppError(403, ErrorCode.OUT_OF_BOUNDS,
+                     "You appear to be outside the venue. Move closer, or scan the QR code.",
+                     {"distanceM": round(distance), "radiusM": cds.radius_m}),
+            cds.id, group,
+        )
+
+    now = utc_now()
+    late_after = as_utc(cds.actual_start) + timedelta(minutes=cds.late_after_minutes)
+    record = AttendanceRecord(
+        user_id=principal.id, session_id=cds.id, method=VerificationMethod.location,
+        status=AttendanceStatus.present if now <= late_after else AttendanceStatus.late,
+        checked_in_at=now, distance_m=round(distance),
+    )
+    user_id, cds_id, title, group_name = principal.id, cds.id, cds.title, group.name
+    db.add(record)
+    try:
+        await db.commit()
+    except IntegrityError:
         await db.rollback()
         raise _duplicate(await _existing(user_id, cds_id, db))
     return CheckInResponse(**_out(record).model_dump(), session_title=title, group_name=group_name)

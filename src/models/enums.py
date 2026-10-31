@@ -49,6 +49,7 @@ class AttendanceStatus(str, Enum):
 class VerificationMethod(str, Enum):
     qr = "qr"
     manual = "manual"
+    location = "location"  # self check-in verified by GPS geofence, no QR scan
 
 
 class ExcuseCategory(str, Enum):

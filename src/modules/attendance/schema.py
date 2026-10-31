@@ -21,6 +21,14 @@ class CheckInRequest(ApiModel):
         return self
 
 
+class LocationCheckInRequest(ApiModel):
+    """GPS self check-in: location is mandatory (it's the only proof of presence)."""
+
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    accuracy_m: Optional[float] = Field(default=None, ge=0, le=10_000)
+
+
 class AttendanceOut(ApiModel):
     id: uuid.UUID
     session_id: uuid.UUID
